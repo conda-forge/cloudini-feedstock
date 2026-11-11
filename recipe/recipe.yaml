@@ -26,14 +26,37 @@ source:
     target_directory: mcap-src
 
 build:
-  number: 0
-  skip: win
+  number: 1
   script:
-    # Locate the pre-fetched mcap headers regardless of the archive's top dir.
-    - MCAP_INCLUDE_DIR="$(find "$PWD/mcap-src" -type d -path '*/cpp/mcap/include' | head -1)"
-    - cmake ${CMAKE_ARGS} -GNinja -B build -S cloudini_lib -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCLOUDINI_FORCE_VENDORED_DEPS=OFF -DCLOUDINI_BUILD_BENCHMARKS=OFF -DBUILD_TESTING=OFF -DMCAP_INCLUDE_DIR="${MCAP_INCLUDE_DIR}" -DCMAKE_INSTALL_PREFIX=$PREFIX
-    - cmake --build build --parallel ${CPU_COUNT}
-    - cmake --install build
+    - if: win
+      then:
+        - cmake %CMAKE_ARGS% -GNinja -B build -S cloudini_lib
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=ON
+            -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
+            -DCLOUDINI_FORCE_VENDORED_DEPS=OFF
+            -DCLOUDINI_BUILD_BENCHMARKS=OFF
+            -DBUILD_TESTING=OFF
+            -DMCAP_INCLUDE_DIR="%SRC_DIR%\mcap-src\cpp\mcap\include"
+            -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%"
+        - if errorlevel 1 exit 1
+        - cmake --build build --parallel %CPU_COUNT%
+        - if errorlevel 1 exit 1
+        - cmake --install build
+        - if errorlevel 1 exit 1
+      else:
+        # Locate the pre-fetched mcap headers regardless of the archive's top dir.
+        - MCAP_INCLUDE_DIR="$(find "$PWD/mcap-src" -type d -path '*/cpp/mcap/include' | head -1)"
+        - cmake ${CMAKE_ARGS} -GNinja -B build -S cloudini_lib
+            -DCMAKE_BUILD_TYPE=Release
+            -DBUILD_SHARED_LIBS=ON
+            -DCLOUDINI_FORCE_VENDORED_DEPS=OFF
+            -DCLOUDINI_BUILD_BENCHMARKS=OFF
+            -DBUILD_TESTING=OFF
+            -DMCAP_INCLUDE_DIR="${MCAP_INCLUDE_DIR}"
+            -DCMAKE_INSTALL_PREFIX=$PREFIX
+        - cmake --build build --parallel ${CPU_COUNT}
+        - cmake --install build
 
 requirements:
   build:
@@ -50,6 +73,9 @@ requirements:
     - lz4-c
     # cxxopts is header-only (CLI arg parsing); found via find_package(cxxopts).
     - cxxopts
+  # libcloudini_lib has an unversioned SONAME: pin consumers to the minor release.
+  run_exports:
+    - ${{ pin_subpackage('cloudini', upper_bound='x.x') }}
 
 tests:
   # Assert the package actually shipped the library, headers, CMake config, and CLI.
@@ -61,8 +87,8 @@ tests:
       bin:
         - cloudini_rosbag_converter
       files:
-        - lib/cmake/cloudini_lib/cloudini_libConfig.cmake
-        - lib/cmake/cloudini_lib/cloudini_libTargets.cmake
+        - ${{ "Library/lib" if win else "lib" }}/cmake/cloudini_lib/cloudini_libConfig.cmake
+        - ${{ "Library/lib" if win else "lib" }}/cmake/cloudini_lib/cloudini_libTargets.cmake
   # The CLI binary must load its shared library and start up.
   - script:
       - cloudini_rosbag_converter --help
