@@ -26,7 +26,7 @@ source:
     target_directory: mcap-src
 
 build:
-  number: 0
+  number: 1
   skip: win
   script:
     # Locate the pre-fetched mcap headers regardless of the archive's top dir.
