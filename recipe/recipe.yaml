@@ -9,7 +9,7 @@
 #   curl -sL https://github.com/facontidavide/cloudini/archive/refs/tags/${version}.tar.gz | sha256sum
 
 context:
-  version: "1.4.1"
+  version: "1.5.0"
 
 package:
   name: cloudini
@@ -17,7 +17,7 @@ package:
 
 source:
   - url: https://github.com/facontidavide/cloudini/archive/refs/tags/${{ version }}.tar.gz
-    sha256: 0fb83aa71c665fc73fdaaf3eefb2f16282f554f3d326c626437467acb203f59b
+    sha256: 1bb5031e863ac331224321e92aea0fa4a389539f2e6445ed9cc881464dd2717f
   # mcap is a header-only dependency of the CLI and is not packaged for C++ on
   # conda-forge; fetch it here (network is available during the source stage but
   # NOT during the build script) and feed it in via -DMCAP_INCLUDE_DIR below.
@@ -26,19 +26,12 @@ source:
     target_directory: mcap-src
 
 build:
-  number: 2
+  number: 0
   script:
     - if: win
       then:
-        - cmake %CMAKE_ARGS% -GNinja -B build -S cloudini_lib
-            -DCMAKE_BUILD_TYPE=Release
-            -DBUILD_SHARED_LIBS=ON
-            -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON
-            -DCLOUDINI_FORCE_VENDORED_DEPS=OFF
-            -DCLOUDINI_BUILD_BENCHMARKS=OFF
-            -DBUILD_TESTING=OFF
-            -DMCAP_INCLUDE_DIR="%SRC_DIR%\mcap-src\cpp\mcap\include"
-            -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%"
+        - cmake %CMAKE_ARGS% -GNinja -B build -S cloudini_lib -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCMAKE_WINDOWS_EXPORT_ALL_SYMBOLS=ON -DCLOUDINI_FORCE_VENDORED_DEPS=OFF -DCLOUDINI_BUILD_BENCHMARKS=OFF -DBUILD_TESTING=OFF -DMCAP_INCLUDE_DIR="%SRC_DIR%\mcap-src\cpp\mcap\include" 
+          -DCMAKE_INSTALL_PREFIX="%LIBRARY_PREFIX%"
         - if errorlevel 1 exit 1
         - cmake --build build --parallel %CPU_COUNT%
         - if errorlevel 1 exit 1
@@ -47,14 +40,7 @@ build:
       else:
         # Locate the pre-fetched mcap headers regardless of the archive's top dir.
         - MCAP_INCLUDE_DIR="$(find "$PWD/mcap-src" -type d -path '*/cpp/mcap/include' | head -1)"
-        - cmake ${CMAKE_ARGS} -GNinja -B build -S cloudini_lib
-            -DCMAKE_BUILD_TYPE=Release
-            -DBUILD_SHARED_LIBS=ON
-            -DCLOUDINI_FORCE_VENDORED_DEPS=OFF
-            -DCLOUDINI_BUILD_BENCHMARKS=OFF
-            -DBUILD_TESTING=OFF
-            -DMCAP_INCLUDE_DIR="${MCAP_INCLUDE_DIR}"
-            -DCMAKE_INSTALL_PREFIX=$PREFIX
+        - cmake ${CMAKE_ARGS} -GNinja -B build -S cloudini_lib -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=ON -DCLOUDINI_FORCE_VENDORED_DEPS=OFF -DCLOUDINI_BUILD_BENCHMARKS=OFF -DBUILD_TESTING=OFF -DMCAP_INCLUDE_DIR="${MCAP_INCLUDE_DIR}" -DCMAKE_INSTALL_PREFIX=$PREFIX
         - cmake --build build --parallel ${CPU_COUNT}
         - cmake --install build
 
